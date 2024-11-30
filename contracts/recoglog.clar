@@ -1,4 +1,4 @@
-;; RecogLog: A simple employee recognition logging system
+;; RecogLog: is a simple employee recognition logging system
 
 ;; Error codes
 (define-constant ERR_UNAUTHORIZED (err u100))
