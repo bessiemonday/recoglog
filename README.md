@@ -1,50 +1,86 @@
-# RecogLog - Employee Recognition Log
+# RecogLog - Advanced Employee Recognition System
 
-RecogLog is a simple blockchain-based application built using Clarity in the Stacks ecosystem. It allows businesses to log employee recognitions, which employees can then view securely and transparently on the blockchain.
+RecogLog is a sophisticated blockchain-based application built using Clarity on the Stacks ecosystem. It enables businesses to log and manage employee recognitions with enhanced features and security.
 
 ## Features
-- **Log Recognition**: Businesses can add recognitions for employees with a unique identifier and a short description.
-- **View Recognitions**: Employees can query and view all the recognitions associated with their account.
+
+- **Log Recognition**: Businesses can add recognitions for employees with automatic ID assignment and timestamp recording.
+- **Update Recognition**: Issuers can update the text of existing recognitions.
+- **View Recognitions**: Employees can query all recognitions associated with their account.
+- **Recognition Counts**: Track the total number of recognitions and per-employee recognition counts.
 
 ## Smart Contract Details
-- **Map Storage**:
-  - `recognitions`: Stores employee recognitions.
-    - **Key**: `{ employee: principal, recognition-id: uint }`
-    - **Value**: `{ recognition-text: (string-ascii 100) }`
-- **Error Constants**:
-  - `ERR-RECOGNITION-EXISTS (err u100)`: Returned if a recognition with the given ID already exists.
-  - `ERR-NOT-AUTHORIZED (err u101)`: Placeholder for future authorization checks (not used in this version).
 
-## Functions
-### `log-recognition`
-Logs a recognition for an employee.
+### Data Structures
 
-#### Parameters:
-- `employee (principal)`: The employee's blockchain address.
-- `recognition-id (uint)`: A unique identifier for the recognition.
-- `recognition-text (string-ascii 100)`: A short description of the recognition.
+- `recognitions`: Map storing detailed recognition data.
+  - Key: `{ id: uint }`
+  - Value: `{ employee: principal, text: (string-ascii 280), issuer: principal, timestamp: uint }`
+- `employee-recognition-count`: Map tracking the number of recognitions per employee.
 
-#### Returns:
-- `(ok true)` if the recognition is logged successfully.
-- `ERR-RECOGNITION-EXISTS` if the recognition ID already exists for the employee.
+### Constants
 
-### `get-recognitions`
-Retrieves all recognitions for a specific employee.
+- `CONTRACT_OWNER`: Set to the contract deployer.
+- `ERR_UNAUTHORIZED (err u100)`: Returned for unauthorized actions.
+- `ERR_INVALID_INPUT (err u101)`: Returned for invalid input data.
+- `ERR_NOT_FOUND (err u102)`: Returned when a requested item is not found.
 
-#### Parameters:
-- `employee (principal)`: The employee's blockchain address.
+### Functions
 
-#### Returns:
-- `(ok ...)` containing a list of recognitions for the specified employee.
+#### Public Functions
+
+1. `log-recognition`
+   - Logs a new recognition for an employee.
+   - Parameters: `employee (principal)`, `text (string-ascii 280)`
+   - Returns: `(ok uint)` with the new recognition ID.
+
+2. `update-recognition`
+   - Updates the text of an existing recognition.
+   - Parameters: `id (uint)`, `new-text (string-ascii 280)`
+   - Returns: `(ok bool)` on success.
+
+#### Read-Only Functions
+
+1. `get-recognition`
+   - Retrieves a specific recognition by ID.
+   - Parameters: `id (uint)`
+   - Returns: Recognition data or `none`.
+
+2. `get-recognition-count`
+   - Returns the total number of recognitions.
+
+3. `get-employee-recognition-count`
+   - Returns the number of recognitions for a specific employee.
+   - Parameters: `employee (principal)`
+
+4. `get-employee-recognitions`
+   - Retrieves all recognitions for a specific employee.
+   - Parameters: `employee (principal)`
+   - Returns: List of recognition IDs.
 
 ## How to Use
+
 1. **Deploy the Contract**:
    - Save the code in `contracts/recoglog.clar`.
-   - Deploy the contract using Clarinet or the Stacks CLI.
+   - Deploy using Clarinet or the Stacks CLI.
 
 2. **Interact with the Contract**:
-   - Use the `log-recognition` function to add a recognition for an employee.
-   - Use the `get-recognitions` function to query recognitions for an employee.
+   - Use `log-recognition` to add a new recognition.
+   - Use `update-recognition` to modify an existing recognition.
+   - Use read-only functions to query recognition data.
 
-3. **Test the Contract**:
-   - Run `clarinet check` to ensure the code is error-free.
+3. **Testing**:
+   - Run `clarinet check` to verify the contract.
+   - Use Clarinet's console to interact with the contract and test its functionality.
+
+## Security Considerations
+
+- Only the issuer of a recognition can update it.
+- Employees cannot issue recognitions to themselves.
+- Input validation is performed to ensure data integrity.
+
+## Future Enhancements
+
+- Implement a role-based access control system.
+- Add functionality for bulk recognition issuance.
+- Integrate with external systems for automated recognition triggers.
