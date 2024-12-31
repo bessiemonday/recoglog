@@ -1,68 +1,88 @@
-;; RecogLog: it is a simple employee recognition logging system
+;; RecogLog: Advanced employee recognition logging system
 
-;; Error codes
+;; Constants
+(define-constant CONTRACT_OWNER tx-sender)
 (define-constant ERR_UNAUTHORIZED (err u100))
 (define-constant ERR_INVALID_INPUT (err u101))
+(define-constant ERR_NOT_FOUND (err u102))
 
-;; Data variable for tracking the next recognition ID
+;; Data variables
 (define-data-var next-id uint u0)
 
-;; Principal variable for contract owner
-(define-data-var contract-owner principal tx-sender)
-
-;; Map to store recognitions
+;; Maps
 (define-map recognitions
   { id: uint }
   {
     employee: principal,
     text: (string-ascii 280),
-    issuer: principal
+    issuer: principal,
+    timestamp: uint
   }
 )
 
-;; Read-only function to get the contract owner
-(define-read-only (get-contract-owner)
-  (var-get contract-owner)
+(define-map employee-recognition-count principal uint)
+
+;; Read-only functions
+(define-read-only (get-recognition (id uint))
+  (map-get? recognitions { id: id })
 )
 
-;; Function to change the contract owner
-(define-public (set-contract-owner (new-owner principal))
-  (begin
-    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR_UNAUTHORIZED)
-    (asserts! (not (is-eq new-owner 'SP000000000000000000002Q6VF78)) ERR_INVALID_INPUT)
-    (ok (var-set contract-owner new-owner))
-  )
+(define-read-only (get-recognition-count)
+  (var-get next-id)
 )
 
-;; Function to log a new recognition
+(define-read-only (get-employee-recognition-count (employee principal))
+  (default-to u0 (map-get? employee-recognition-count employee))
+)
+
+;; Public functions
 (define-public (log-recognition (employee principal) (text (string-ascii 280)))
   (let
     (
       (id (var-get next-id))
+      (issuer tx-sender)
+      (timestamp (unwrap-panic (get-block-info? time (- block-height u1))))
     )
     (asserts! (and 
                 (> (len text) u0)
-                (not (is-eq employee 'SP000000000000000000002Q6VF78))
+                (not (is-eq employee issuer))
                ) ERR_INVALID_INPUT)
     (map-set recognitions
       { id: id }
       {
         employee: employee,
         text: text,
-        issuer: tx-sender
+        issuer: issuer,
+        timestamp: timestamp
       }
     )
-    (ok (var-set next-id (+ id u1)))
+    (map-set employee-recognition-count
+      employee
+      (+ (get-employee-recognition-count employee) u1)
+    )
+    (var-set next-id (+ id u1))
+    (ok id)
   )
 )
 
-;; Read-only function to get a specific recognition
-(define-read-only (get-recognition (id uint))
-  (map-get? recognitions { id: id })
+(define-public (update-recognition (id uint) (new-text (string-ascii 280)))
+  (let ((recognition (unwrap! (get-recognition id) ERR_NOT_FOUND)))
+    (asserts! (is-eq (get issuer recognition) tx-sender) ERR_UNAUTHORIZED)
+    (asserts! (> (len new-text) u0) ERR_INVALID_INPUT)
+    (ok (map-set recognitions
+      { id: id }
+      (merge recognition { text: new-text })
+    ))
+  )
 )
 
-;; Read-only function to get the total number of recognitions
-(define-read-only (get-recognition-count)
-  (var-get next-id)
+(define-read-only (get-employee-recognitions (employee principal))
+  (filter get-recognition-by-employee (map uint-to-int (iota (get-recognition-count))))
 )
 
+(define-private (get-recognition-by-employee (id int))
+  (match (map-get? recognitions { id: (to-uint id) })
+    recognition (is-eq (get employee recognition) employee)
+    false
+  )
+)
