@@ -1,20 +1,20 @@
-;; RecogLog: Advanced employee recognition logging system
+;; RecogLog: Advanced Employee Recognition System
 
 ;; Constants
 (define-constant CONTRACT_OWNER tx-sender)
-(define-constant ERR_UNAUTHORIZED (err u100))
-(define-constant ERR_INVALID_INPUT (err u101))
+(define-constant ERR_RECOGNITION_EXISTS (err u100))
+(define-constant ERR_NOT_AUTHORIZED (err u101))
 (define-constant ERR_NOT_FOUND (err u102))
+(define-constant ERR_INVALID_INPUT (err u103))
 
-;; Data variables
-(define-data-var next-id uint u0)
+;; Data Variables
+(define-data-var next-recognition-id uint u0)
 
 ;; Maps
 (define-map recognitions
-  { id: uint }
+  { employee: principal, recognition-id: uint }
   {
-    employee: principal,
-    text: (string-ascii 280),
+    recognition-text: (string-ascii 100),
     issuer: principal,
     timestamp: uint
   }
@@ -23,12 +23,8 @@
 (define-map employee-recognition-count principal uint)
 
 ;; Read-only functions
-(define-read-only (get-recognition (id uint))
-  (map-get? recognitions { id: id })
-)
-
-(define-read-only (get-recognition-count)
-  (var-get next-id)
+(define-read-only (get-recognition (employee principal) (recognition-id uint))
+  (map-get? recognitions { employee: employee, recognition-id: recognition-id })
 )
 
 (define-read-only (get-employee-recognition-count (employee principal))
@@ -36,22 +32,20 @@
 )
 
 ;; Public functions
-(define-public (log-recognition (employee principal) (text (string-ascii 280)))
+(define-public (log-recognition (employee principal) (recognition-text (string-ascii 100)))
   (let
     (
-      (id (var-get next-id))
+      (recognition-id (var-get next-recognition-id))
       (issuer tx-sender)
-      (timestamp (unwrap-panic (get-block-info? time (- block-height u1))))
+      (timestamp u0)
     )
-    (asserts! (and 
-                (> (len text) u0)
-                (not (is-eq employee issuer))
-               ) ERR_INVALID_INPUT)
+    (asserts! (> (len recognition-text) u0) ERR_INVALID_INPUT)
+    (asserts! (not (is-eq employee issuer)) ERR_INVALID_INPUT)
+    (asserts! (is-none (get-recognition employee recognition-id)) ERR_RECOGNITION_EXISTS)
     (map-set recognitions
-      { id: id }
+      { employee: employee, recognition-id: recognition-id }
       {
-        employee: employee,
-        text: text,
+        recognition-text: recognition-text,
         issuer: issuer,
         timestamp: timestamp
       }
@@ -60,29 +54,33 @@
       employee
       (+ (get-employee-recognition-count employee) u1)
     )
-    (var-set next-id (+ id u1))
-    (ok id)
+    (var-set next-recognition-id (+ recognition-id u1))
+    (ok recognition-id)
   )
 )
 
-(define-public (update-recognition (id uint) (new-text (string-ascii 280)))
-  (let ((recognition (unwrap! (get-recognition id) ERR_NOT_FOUND)))
-    (asserts! (is-eq (get issuer recognition) tx-sender) ERR_UNAUTHORIZED)
+(define-public (update-recognition (employee principal) (recognition-id uint) (new-text (string-ascii 100)))
+  (let ((recognition (unwrap! (get-recognition employee recognition-id) ERR_NOT_FOUND)))
+    (asserts! (is-eq (get issuer recognition) tx-sender) ERR_NOT_AUTHORIZED)
     (asserts! (> (len new-text) u0) ERR_INVALID_INPUT)
     (ok (map-set recognitions
-      { id: id }
-      (merge recognition { text: new-text })
+      { employee: employee, recognition-id: recognition-id }
+      (merge recognition { recognition-text: new-text })
     ))
   )
 )
 
 (define-read-only (get-employee-recognitions (employee principal))
-  (filter get-recognition-by-employee (map uint-to-int (iota (get-recognition-count))))
-)
-
-(define-private (get-recognition-by-employee (id int))
-  (match (map-get? recognitions { id: (to-uint id) })
-    recognition (is-eq (get employee recognition) employee)
-    false
+  (list 
+    (get-recognition employee u0)
+    (get-recognition employee u1)
+    (get-recognition employee u2)
+    (get-recognition employee u3)
+    (get-recognition employee u4)
+    (get-recognition employee u5)
+    (get-recognition employee u6)
+    (get-recognition employee u7)
+    (get-recognition employee u8)
+    (get-recognition employee u9)
   )
 )
